@@ -3,6 +3,7 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
+    image: roieharkavi/jewelry-app:auth-service
     container_name: auth-service
     ports:
       - "8001:8001"
@@ -18,6 +19,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: roieharkavi/jewelry-app:backend
     container_name: backend-service
     ports:
       - "8000:8000"
@@ -36,6 +38,7 @@ services:
     build:
       context: ./jewelry-store
       dockerfile: Dockerfile
+    image: roieharkavi/jewelry-app:frontend
     container_name: frontend-nginx
     ports:
       - "80:80"
