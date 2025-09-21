@@ -1,10 +1,10 @@
+version: '3.8'
+
 services:
   auth-service:
-    build:
-      context: ./auth-service
-      dockerfile: Dockerfile
-    image: roieharkavi/jewelry-app:auth-service
+    image: nexus:8082/repository/docker-hosted/jewelry-app:auth-service
     container_name: auth-service
+    restart: unless-stopped
     ports:
       - "8001:8001"
     environment:
@@ -13,14 +13,11 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - jewelry-network
-    restart: unless-stopped
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: roieharkavi/jewelry-app:backend
+    image: nexus:8082/repository/docker-hosted/jewelry-app:backend
     container_name: backend-service
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -32,14 +29,11 @@ services:
       - auth-service
     networks:
       - jewelry-network
-    restart: unless-stopped
 
   frontend:
-    build:
-      context: ./jewelry-store
-      dockerfile: Dockerfile
-    image: roieharkavi/jewelry-app:frontend
+    image: nexus:8082/repository/docker-hosted/jewelry-app:frontend
     container_name: frontend-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
@@ -47,7 +41,6 @@ services:
       - auth-service
     networks:
       - jewelry-network
-    restart: unless-stopped
 
   jenkins-docker:
     image: docker:dind
@@ -80,6 +73,19 @@ services:
       - jenkins-data:/var/jenkins_home
       - jenkins-docker-certs:/certs/client:ro
 
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    restart: unless-stopped
+    ports:
+      - "8081:8081" 
+      - "8082:8082" 
+    volumes:
+      - nexus-data:/nexus-data
+    networks:
+      - jenkins
+      - jewelry-network
+
 networks:
   jewelry-network:
     driver: bridge
@@ -91,3 +97,4 @@ volumes:
     driver: local
   jenkins-data:
   jenkins-docker-certs:
+  nexus-data:
