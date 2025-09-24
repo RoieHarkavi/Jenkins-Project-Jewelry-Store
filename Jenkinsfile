@@ -1,5 +1,18 @@
 @Library('jewelry-shared-lib') _
 
+properties([
+    pipelineTriggers([
+        [$class: 'GenericTrigger',
+         genericVariables: [],
+         causeString: 'Triggered on GitHub push',
+         token: 'MY_WEBHOOK_TOKEN',
+         printContributedVariables: true,
+         printPostContent: true,
+         regexpFilterText: '$ref',
+         regexpFilterExpression: 'refs/heads/main']
+    ])
+])
+
 pipeline {
     agent {
         docker {
@@ -8,18 +21,6 @@ pipeline {
         }
     }
 
-    triggers {
-        GenericTrigger(
-            genericVariables: [],
-            causeString: 'Triggered on GitHub push',
-            token: 'MY_WEBHOOK_TOKEN',
-            printContributedVariables: true,
-            printPostContent: true,
-            silentResponse: false,
-            regexpFilterText: '$ref',
-            regexpFilterExpression: 'refs/heads/main'
-        )
-    }
     options {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
         disableConcurrentBuilds()
