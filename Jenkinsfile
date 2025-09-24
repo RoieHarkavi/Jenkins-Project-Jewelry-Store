@@ -1,3 +1,5 @@
+@Library('jewelry-shared-lib') _
+
 pipeline {
     agent {
         docker {
@@ -6,6 +8,18 @@ pipeline {
         }
     }
 
+    triggers {
+        GenericTrigger(
+            genericVariables: [],
+            causeString: 'Triggered on GitHub push',
+            token: 'MY_WEBHOOK_TOKEN',
+            printContributedVariables: true,
+            printPostContent: true,
+            silentResponse: false,
+            regexpFilterText: '$ref',
+            regexpFilterExpression: 'refs/heads/main'
+        )
+    }
     options {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
         disableConcurrentBuilds()
@@ -14,6 +28,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
+        NEXUS_CREDENTIALS = 'nexus-credentials'
     }
 
     stages {
@@ -27,20 +42,8 @@ pipeline {
             steps {
                 script {
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    def imageTag   = "${commitHash}-${env.BUILD_NUMBER}"
-
-                    withCredentials([usernamePassword(credentialsId: 'nexus-credentials',
-                                                     usernameVariable: 'NEXUS_USER',
-                                                     passwordVariable: 'NEXUS_PASS')]) {
-                        sh """
-                            echo "$NEXUS_PASS" | docker login -u "$NEXUS_USER" --password-stdin nexus:8082
-                            docker build -t ${DOCKER_IMAGE}:${imageTag} -t ${DOCKER_IMAGE}:latest .
-                            docker push ${DOCKER_IMAGE}:${imageTag}
-                            docker push ${DOCKER_IMAGE}:latest
-                        """
-                    }
-
-                    env.IMAGE_TAG = imageTag
+                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
+                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
                 }
             }
         }
@@ -50,15 +53,7 @@ pipeline {
                 stage('Unit Tests inside Docker') {
                     steps {
                         script {
-                            sh """
-                                docker run --rm ${DOCKER_IMAGE}:${env.IMAGE_TAG} \
-                                bash -c "pip3 install -r requirements.txt && python3 -m pytest --junitxml results.xml tests/*.py"
-                            """
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'results.xml'
+                            runTests(DOCKER_IMAGE, env.IMAGE_TAG)
                         }
                     }
                 }
@@ -82,31 +77,25 @@ pipeline {
                     sh """
                         echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG} for vulnerabilities..."
                         snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
-
-                        # Optional: ignore vulnerabilities listed in snyk-ignore.yml
-                        if [ -f snyk-ignore.yml ]; then
-                            while IFS= read -r line; do
-                                snyk ignore --id="$line"
-                            done < snyk-ignore.yml
-                        fi
                     """
                 }
             }
         }
 
-        stage('Deploy App') {
+         stage('Deploy App') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'nexus-credentials',
-                                                     usernameVariable: 'NEXUS_USER',
-                                                     passwordVariable: 'NEXUS_PASS')]) {
-                        sh """
-                            echo "$NEXUS_PASS" | docker login -u "$NEXUS_USER" --password-stdin nexus:8082
-                            docker pull ${DOCKER_IMAGE}:${IMAGE_TAG}
-                            docker pull ${DOCKER_IMAGE}:latest
-                            docker-compose -f docker-compose.yml up -d
-                        """
-                    }
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
+                }
+            }
+        }
+        
+        stage('Promote to Staging') {
+            when { branch 'main' }
+            steps {
+                input message: 'Deploy to Staging?', ok: 'Yes, Deploy'
+                script {
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
                 }
             }
         }
