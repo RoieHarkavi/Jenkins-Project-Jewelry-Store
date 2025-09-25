@@ -41,7 +41,7 @@ pipeline {
                 docker --version
                 '''
             }
-            
+        }
         stage('Checkout') {
             steps {
                 checkout scm
