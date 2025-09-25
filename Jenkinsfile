@@ -16,8 +16,8 @@ properties([
 pipeline {
     agent {
         docker {
-            image 'roieharkavi/jenkins-agent:latest'
-            args '--privileged -u root -v /var/run/docker.sock:/var/run/docker.sock'
+            image 'roieharkavi/jewelry-agent:latest'
+            args  '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
         }
     }
 
@@ -34,36 +34,6 @@ pipeline {
     }
 
     stages {
-        stage('Test Docker Login & Version') {
-            steps {
-                sh '''#!/bin/bash -l
-                echo ">>> User: $(whoami)"
-                echo ">>> PATH: $PATH"
-                docker --version
-                docker info || echo "Cannot connect to Docker daemon"
-                '''
-            }
-        }
-
-        stage('Verify Docker CLI') {
-            steps {
-                sh 'which docker && docker --version'
-            }
-        }
-
-        stage('Checkout') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [[$class: 'WipeWorkspace']], // מוחק קבצים ישנים
-                    userRemoteConfigs: [[url: 'https://github.com/RoieHarkavi/Jenkins-Project-Jewelry-Store.git']]
-                ])
-            }
-        }
-
-
         stage('Build & Push Docker Image') {
             steps {
                 script {
