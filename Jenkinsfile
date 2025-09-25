@@ -33,18 +33,19 @@ pipeline {
     }
 
     stages {
-        stage('Verify Docker') {
-            steps {
-                sh 'docker --version'
-                sh 'which docker'
-            }
-        }
         stage('Build & Push Docker Image') {
             steps {
                 script {
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+
+                    // Use secure credentials without interpolation
+                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh '''
+                            echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin nexus:8082
+                            buildAndPush ${DOCKER_IMAGE} ${IMAGE_TAG}
+                        '''
+                    }
                 }
             }
         }
@@ -61,12 +62,10 @@ pipeline {
 
                 stage('Static Code Linting') {
                     steps {
-                        script {
-                            sh '''
-                                python3 -m pip install -r requirements.txt
-                                python3 -m pylint *.py --rcfile=.pylintrc || true
-                            '''
-                        }
+                        sh '''
+                            python3 -m pip install -r requirements.txt
+                            python3 -m pylint *.py --rcfile=.pylintrc || true
+                        '''
                     }
                 }
             }
