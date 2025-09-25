@@ -17,7 +17,7 @@ pipeline {
     agent {
         docker {
             image 'roieharkavi/jewelry-agent:latest'
-            args  '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -77,14 +77,14 @@ pipeline {
             }
         }
 
-         stage('Deploy App') {
+        stage('Deploy App') {
             steps {
                 script {
                     deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
                 }
             }
         }
-        
+
         stage('Promote to Staging') {
             when { branch 'main' }
             steps {
