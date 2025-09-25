@@ -36,32 +36,20 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-
-                    // Use secure credentials without interpolation
-                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh '''
-                            echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin nexus:8082
-                            buildAndPush ${DOCKER_IMAGE} ${IMAGE_TAG}
-                        '''
+                    docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
+                        def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                        env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
+                        buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
                     }
                 }
             }
         }
 
         stage('Quality & Tests') {
-            parallel {
-                stage('Unit Tests inside Docker') {
-                    steps {
-                        script {
-                            runTests(DOCKER_IMAGE, env.IMAGE_TAG)
-                        }
-                    }
-                }
-
-                stage('Static Code Linting') {
-                    steps {
+            steps {
+                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
+                    script {
+                        runTests(DOCKER_IMAGE, env.IMAGE_TAG)
                         sh '''
                             python3 -m pip install -r requirements.txt
                             python3 -m pylint *.py --rcfile=.pylintrc || true
@@ -73,19 +61,23 @@ pipeline {
 
         stage('Security Scan (Snyk)') {
             steps {
-                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
-                    sh """
-                        echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG} for vulnerabilities..."
-                        snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
-                    """
+                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
+                    withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                        sh """
+                            echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG}..."
+                            snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
+                        """
+                    }
                 }
             }
         }
 
         stage('Deploy App') {
             steps {
-                script {
-                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
+                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
+                    script {
+                        deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
+                    }
                 }
             }
         }
@@ -94,8 +86,10 @@ pipeline {
             when { branch 'main' }
             steps {
                 input message: 'Deploy to Staging?', ok: 'Yes, Deploy'
-                script {
-                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
+                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
+                    script {
+                        deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
+                    }
                 }
             }
         }
