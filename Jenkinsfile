@@ -25,6 +25,7 @@ pipeline {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
         disableConcurrentBuilds()
         timestamps()
+        skipDefaultCheckout()
     }
 
     environment {
@@ -33,15 +34,15 @@ pipeline {
     }
 
     stages {
-        stage('Debug Docker') {
+
+        stage('Force Pull Agent') {
+            agent none
             steps {
-                sh '''
-                which docker || echo "docker CLI not found"
-                docker --version || echo "docker CLI not working"
-                docker info || echo "cannot connect to Docker daemon"
-                '''
+                sh 'docker pull roieharkavi/jewelry-agent:latest'
             }
         }
+
+
         stage('Checkout') {
             steps {
                 checkout scm
