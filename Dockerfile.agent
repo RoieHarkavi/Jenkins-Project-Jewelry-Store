@@ -17,6 +17,8 @@ FROM jenkins/agent
 
 # העתקת docker client
 COPY --from=docker /usr/local/bin/docker /usr/local/bin/
+# הוספת docker-compose (חסר!)
+COPY --from=docker /usr/local/bin/docker-compose /usr/local/bin/
 
 # העתקת AWS CLI
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
@@ -29,6 +31,9 @@ COPY --from=installer /snyk/ /usr/bin/
 # התקנת Python3
 USER root
 RUN apt-get update && apt-get install -y python3 python3-pip
-USER jenkins
 
-# סיום – הפקודות כבר מוכנות לשימוש בתוך Jenkins agent
+# הוספת הרשאות Docker (זה מה שחסר!)
+RUN groupadd -f docker && usermod -aG docker jenkins
+RUN chmod +x /usr/local/bin/docker /usr/local/bin/snyk
+
+USER jenkins

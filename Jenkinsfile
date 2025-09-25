@@ -14,13 +14,7 @@ properties([
 ])
 
 pipeline {
-    agent {
-        docker {
-            image 'roieharkavi/jewelry-agent3:latest'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
-
+    agent any  // הרצה על node כלשהו, אין צורך ב-agent docker
     options {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
         disableConcurrentBuilds()
@@ -30,6 +24,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
+        SNYK_CREDENTIALS = 'snyk-token'
     }
 
     stages {
@@ -38,7 +33,17 @@ pipeline {
                 script {
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+
+                    // שימוש ב־withRegistry כדי להתחבר ל־Nexus
+                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS,
+                                                     usernameVariable: 'NEXUS_USER',
+                                                     passwordVariable: 'NEXUS_PASS')]) {
+                        docker.withRegistry('http://nexus:8082', NEXUS_CREDENTIALS) {
+                            def img = docker.build("${DOCKER_IMAGE}:${IMAGE_TAG}")
+                            img.push()
+                            img.push('latest')
+                        }
+                    }
                 }
             }
         }
@@ -46,18 +51,19 @@ pipeline {
         stage('Quality & Tests') {
             steps {
                 script {
-                    runTests(DOCKER_IMAGE, env.IMAGE_TAG)
-                    sh '''
-                        python3 -m pip install -r requirements.txt
-                        python3 -m pylint *.py --rcfile=.pylintrc || true
-                    '''
+                    docker.image("${DOCKER_IMAGE}:${IMAGE_TAG}").inside {
+                        sh 'python3 -m pip install -r requirements.txt'
+                        sh 'python3 -m pytest --junitxml results.xml tests/*.py'
+                        sh 'python3 -m pylint *.py --rcfile=.pylintrc || true'
+                    }
+                    junit allowEmptyResults: true, testResults: 'results.xml'
                 }
             }
         }
 
         stage('Security Scan (Snyk)') {
             steps {
-                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                withCredentials([string(credentialsId: SNYK_CREDENTIALS, variable: 'SNYK_TOKEN')]) {
                     sh """
                         echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG}..."
                         snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
@@ -65,32 +71,3 @@ pipeline {
                 }
             }
         }
-
-        stage('Deploy App') {
-            steps {
-                script {
-                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
-                }
-            }
-        }
-
-        stage('Promote to Staging') {
-            when { branch 'main' }
-            steps {
-                input message: 'Deploy to Staging?', ok: 'Yes, Deploy'
-                script {
-                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            echo ">>> Cleaning up Docker images..."
-            sh "docker rmi \$(docker images -q ${DOCKER_IMAGE}) || true"
-            echo ">>> Cleaning workspace..."
-            cleanWs()
-        }
-    }
-}
