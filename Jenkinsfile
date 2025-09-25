@@ -16,7 +16,7 @@ properties([
 pipeline {
     agent {
         docker {
-            image 'roieharkavi/jewelry-agent:latest'
+            image 'roieharkavi/jenkins-agent:latest'
             args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
@@ -25,7 +25,6 @@ pipeline {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
         disableConcurrentBuilds()
         timestamps()
-        skipDefaultCheckout()
     }
 
     environment {
@@ -34,15 +33,6 @@ pipeline {
     }
 
     stages {
-
-        stage('Force Pull Agent') {
-            agent none
-            steps {
-                sh 'docker pull roieharkavi/jewelry-agent:latest'
-            }
-        }
-
-
         stage('Checkout') {
             steps {
                 checkout scm
