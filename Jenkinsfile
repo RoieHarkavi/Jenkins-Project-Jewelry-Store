@@ -30,9 +30,16 @@ pipeline {
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
+        PATH = "/usr/local/bin:${env.PATH}"
     }
 
     stages {
+        stage('Verify Docker CLI') {
+            steps {
+                sh 'which docker && docker --version'
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 checkout scm
