@@ -36,48 +36,40 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
-                        def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                        env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-                        buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
-                    }
+                    def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
+                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
                 }
             }
         }
 
         stage('Quality & Tests') {
             steps {
-                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
-                    script {
-                        runTests(DOCKER_IMAGE, env.IMAGE_TAG)
-                        sh '''
-                            python3 -m pip install -r requirements.txt
-                            python3 -m pylint *.py --rcfile=.pylintrc || true
-                        '''
-                    }
+                script {
+                    runTests(DOCKER_IMAGE, env.IMAGE_TAG)
+                    sh '''
+                        python3 -m pip install -r requirements.txt
+                        python3 -m pylint *.py --rcfile=.pylintrc || true
+                    '''
                 }
             }
         }
 
         stage('Security Scan (Snyk)') {
             steps {
-                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
-                    withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
-                        sh """
-                            echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG}..."
-                            snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
-                        """
-                    }
+                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                    sh """
+                        echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG}..."
+                        snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
+                    """
                 }
             }
         }
 
         stage('Deploy App') {
             steps {
-                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
-                    script {
-                        deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
-                    }
+                script {
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
                 }
             }
         }
@@ -86,10 +78,8 @@ pipeline {
             when { branch 'main' }
             steps {
                 input message: 'Deploy to Staging?', ok: 'Yes, Deploy'
-                docker.image('roieharkavi/jewelry-agent3:latest').inside('--user root -v /var/run/docker.sock:/var/run/docker.sock') {
-                    script {
-                        deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
-                    }
+                script {
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
                 }
             }
         }
