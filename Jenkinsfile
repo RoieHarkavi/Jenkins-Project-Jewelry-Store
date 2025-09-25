@@ -17,7 +17,7 @@ pipeline {
     agent {
         docker {
             image 'roieharkavi/jewelry-agent:latest'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
