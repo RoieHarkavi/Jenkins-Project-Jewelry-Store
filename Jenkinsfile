@@ -14,12 +14,7 @@ properties([
 ])
 
 pipeline {
-    agent {
-        docker {
-            image 'roieharkavi/jewelry-agent2:latest'
-            args  '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
-        }
-    }
+    agent any
 
     options {
         buildDiscarder(logRotator(daysToKeepStr: '30'))
@@ -30,7 +25,6 @@ pipeline {
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
-        AGENT_IMAGE = "roieharkavi/jewelry-agent:latest"
     }
 
     stages {
