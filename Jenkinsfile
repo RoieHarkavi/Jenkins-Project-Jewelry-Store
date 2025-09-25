@@ -33,6 +33,15 @@ pipeline {
     }
 
     stages {
+        stage('Debug Docker') {
+            steps {
+                sh '''
+                which docker || echo "docker CLI not found"
+                docker --version || echo "docker CLI not working"
+                docker info || echo "cannot connect to Docker daemon"
+                '''
+            }
+        }
         stage('Checkout') {
             steps {
                 checkout scm
