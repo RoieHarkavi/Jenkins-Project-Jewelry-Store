@@ -1,33 +1,138 @@
+@Library('jewelry-shared-lib') _
+
+properties([
+    pipelineTriggers([
+        [$class: 'GenericTrigger',
+         genericVariables: [],
+         causeString: 'Triggered on GitHub push',
+         token: 'MY_WEBHOOK_TOKEN',
+         printContributedVariables: true,
+         printPostContent: true,
+         regexpFilterText: '$ref',
+         regexpFilterExpression: 'refs/heads/main']
+    ])
+])
+
 pipeline {
     agent {
         docker {
             image 'roieharkavi/jenkins-agent:latest'
-            // מחייב host עם Docker daemon והגדרות privileged
             args '--privileged -u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
     options {
+        buildDiscarder(logRotator(daysToKeepStr: '30'))
+        disableConcurrentBuilds()
         timestamps()
     }
 
+    environment {
+        DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
+        NEXUS_CREDENTIALS = 'nexus-credentials'
+        PATH = "/usr/local/bin:${env.PATH}"
+    }
+
     stages {
-        stage('Verify Docker CLI') {
+        stage('Test Docker Login & Version') {
             steps {
                 sh '''#!/bin/bash -l
                 echo ">>> User: $(whoami)"
                 echo ">>> PATH: $PATH"
-                
-                # בדיקה אם Docker CLI קיים
-                which docker || { echo "docker CLI not found"; exit 1; }
-
-                # בדיקה אם Docker CLI עובד
-                docker --version || { echo "docker --version failed"; exit 1; }
-
-                # בדיקה אם ניתן להתחבר ל-Docker daemon
-                docker info || { echo "Cannot connect to Docker daemon"; exit 1; }
+                docker --version
+                docker info || echo "Cannot connect to Docker daemon"
                 '''
             }
+        }
+
+        stage('Verify Docker CLI') {
+            steps {
+                sh 'which docker && docker --version'
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[$class: 'WipeWorkspace']], // מוחק קבצים ישנים
+                    userRemoteConfigs: [[url: 'https://github.com/RoieHarkavi/Jenkins-Project-Jewelry-Store.git']]
+                ])
+            }
+        }
+
+
+        stage('Build & Push Docker Image') {
+            steps {
+                script {
+                    def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
+                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+                }
+            }
+        }
+
+        stage('Quality & Tests') {
+            parallel {
+                stage('Unit Tests inside Docker') {
+                    steps {
+                        script {
+                            runTests(DOCKER_IMAGE, env.IMAGE_TAG)
+                        }
+                    }
+                }
+
+                stage('Static Code Linting') {
+                    steps {
+                        script {
+                            sh '''
+                                python3 -m pip install -r requirements.txt
+                                python3 -m pylint *.py --rcfile=.pylintrc || true
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan (Snyk)') {
+            steps {
+                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                    sh """
+                        echo ">>> Scanning Docker image ${DOCKER_IMAGE}:${IMAGE_TAG} for vulnerabilities..."
+                        snyk container test ${DOCKER_IMAGE}:${IMAGE_TAG} --file=Dockerfile --severity-threshold=high
+                    """
+                }
+            }
+        }
+
+         stage('Deploy App') {
+            steps {
+                script {
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'dev')
+                }
+            }
+        }
+        
+        stage('Promote to Staging') {
+            when { branch 'main' }
+            steps {
+                input message: 'Deploy to Staging?', ok: 'Yes, Deploy'
+                script {
+                    deployApp(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS, 'staging')
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo ">>> Cleaning up Docker images..."
+            sh "docker rmi \$(docker images -q ${DOCKER_IMAGE}) || true"
+            echo ">>> Cleaning workspace..."
+            cleanWs()
         }
     }
 }
