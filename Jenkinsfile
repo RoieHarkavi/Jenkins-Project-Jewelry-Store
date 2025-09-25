@@ -33,6 +33,12 @@ pipeline {
     }
 
     stages {
+        stage('Verify Docker') {
+            steps {
+                sh 'docker --version'
+                sh 'which docker'
+            }
+        }
         stage('Build & Push Docker Image') {
             steps {
                 script {
