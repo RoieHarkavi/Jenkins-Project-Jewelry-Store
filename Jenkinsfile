@@ -17,7 +17,7 @@ pipeline {
     agent {
         docker {
             image 'roieharkavi/jewelry-agent:latest'
-            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -33,15 +33,6 @@ pipeline {
     }
 
     stages {
-        stage('Prepare Docker CLI') {
-            steps {
-                sh '''
-                curl -fsSL https://get.docker.com -o get-docker.sh
-                sh get-docker.sh
-                docker --version
-                '''
-            }
-        }
         stage('Checkout') {
             steps {
                 checkout scm
