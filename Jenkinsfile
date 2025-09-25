@@ -34,12 +34,23 @@ pipeline {
     }
 
     stages {
+        stage('Test Docker Login & Version') {
+            steps {
+                sh '''#!/bin/bash -l
+                echo ">>> User: $(whoami)"
+                echo ">>> PATH: $PATH"
+                docker --version
+                docker info || echo "Cannot connect to Docker daemon"
+                '''
+            }
+        }
+
         stage('Verify Docker CLI') {
             steps {
                 sh 'which docker && docker --version'
             }
         }
-        
+
         stage('Checkout') {
             steps {
                 checkout scm
