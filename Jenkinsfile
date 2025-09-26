@@ -16,7 +16,7 @@ properties([
 pipeline {
     agent {
         docker {
-            image 'roieharkavi/jewelry-agent3:latest'
+            image 'roieharkavi/jewelry-agent:latest'
             args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
@@ -49,9 +49,14 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+                    try {
+                        def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                        env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
+                        buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+                    } catch (err) {
+                        currentBuild.result = 'FAILURE'
+                        error("❌ Build failed, exiting pipeline.")
+                    }
                 }
             }
         }
