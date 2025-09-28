@@ -1,5 +1,28 @@
 services:
   # -------------------------
+  # Jenkins Agent (לפי Dockerfile.agent)
+  # -------------------------
+  jenkins-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+      # הוסף build arg כדי להכריח rebuild
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date)}
+    container_name: jenkins-agent
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins-data:/var/jenkins_home
+    networks:
+      - jewelry-net
+    restart: unless-stopped
+    # Agent needs to stay running - use sleep for now
+    command: ["sleep", "infinity"]
+    depends_on:
+      - jenkins
+
+  # -------------------------
   # Nexus Repository
   # -------------------------
   nexus:
@@ -13,19 +36,13 @@ services:
     networks:
       - jewelry-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
-      interval: 10s
-      retries: 10
-      start_period: 30s
 
   # -------------------------
-  # Jenkins
+  # Jenkins Server
   # -------------------------
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
-    user: root                     # נותן גישה ל-docker socket
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
     ports:
@@ -33,54 +50,7 @@ services:
       - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock  # גישה לדוקר של המארח
-    networks:
-      - jewelry-net
-    restart: unless-stopped
-
-  # -------------------------
-  # Application Services
-  # -------------------------
-  auth-service:
-    image: localhost:8082/repository/docker-hosted/jewelry-app/auth-service:latest
-    container_name: auth-service
-    ports:
-      - "8001:8001"
-    depends_on:
-      nexus:
-        condition: service_healthy
-    networks:
-      - jewelry-net
-    restart: unless-stopped
-
-  backend:
-    image: localhost:8082/repository/docker-hosted/jewelry-app/backend:latest
-    container_name: backend-service
-    ports:
-      - "8000:8000"
-    depends_on:
-      auth-service:
-        condition: service_started
-      nexus:
-        condition: service_healthy
-    networks:
-      - jewelry-net
-    restart: unless-stopped
-    environment:
-      - AUTH_SERVICE_URL=http://auth-service:8001
-
-  frontend:
-    image: localhost:8082/repository/docker-hosted/jewelry-app/frontend:latest
-    container_name: frontend-nginx
-    ports:
-      - "80:80"
-    depends_on:
-      backend:
-        condition: service_started
-      auth-service:
-        condition: service_started
-      nexus:
-        condition: service_healthy
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - jewelry-net
     restart: unless-stopped
@@ -89,8 +59,8 @@ services:
 # Volumes
 # -------------------------
 volumes:
-  nexus-data:
   jenkins-data:
+  nexus-data:
 
 # -------------------------
 # Network

@@ -1,39 +1,40 @@
-# 1️⃣ Base stage עם Docker client
-FROM docker:28.4.0 as docker
-
-# 2️⃣ Stage להתקנת AWS CLI ו‑Snyk
+# Stage 1: Install AWS CLI and Snyk
 FROM amazonlinux:2 as installer
-RUN yum update -y && yum install -y unzip curl && \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install --bin-dir /aws-cli-bin/
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN yum update -y \
+    && yum install -y unzip \
+    && unzip awscliv2.zip \
+    && ./aws/install --bin-dir /aws-cli-bin/
 
-RUN mkdir /snyk && cd /snyk && \
-    curl https://static.snyk.io/cli/v1.666.0/snyk-linux -o snyk && \
-    chmod +x snyk
+RUN mkdir /snyk && cd /snyk \
+    && curl https://static.snyk.io/cli/v1.666.0/snyk-linux -o snyk \
+    && chmod +x ./snyk
 
-# 3️⃣ Stage הסופי – Jenkins Agent עם הכל
+# Stage 2: Get Docker client
+FROM docker:latest as docker-source
+
+# Stage 3: Final Jenkins agent image
 FROM jenkins/agent
 
-# העתקת docker client
-COPY --from=docker /usr/local/bin/docker /usr/local/bin/
-# הוספת docker-compose (חסר!)
-COPY --from=docker /usr/local/bin/docker-compose /usr/local/bin/
+# Copy Docker client from docker-source stage
+COPY --from=docker-source /usr/local/bin/docker /usr/local/bin/
 
-# העתקת AWS CLI
-COPY --from=installer /aws-cli-bin/ /usr/local/bin/
+# Copy AWS CLI and Snyk from installer stage
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
-
-# העתקת Snyk
+COPY --from=installer /aws-cli-bin/ /usr/local/bin/
 COPY --from=installer /snyk/ /usr/local/bin/
-COPY --from=installer /snyk/ /usr/bin/
 
-# התקנת Python3
+# Switch to root to install packages
 USER root
-RUN apt-get update && apt-get install -y python3 python3-pip
 
-# הוספת הרשאות Docker (זה מה שחסר!)
-RUN groupadd -f docker && usermod -aG docker jenkins
-RUN chmod +x /usr/local/bin/docker /usr/local/bin/snyk
+# Install Python and pip
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
 
+# Make sure docker is executable
+RUN chmod +x /usr/local/bin/docker
+
+# Switch back to jenkins user
 USER jenkins
