@@ -1,23 +1,20 @@
 services:
   # -------------------------
-  # Jenkins Agent (לפי Dockerfile.agent)
+  # Jenkins Agent
   # -------------------------
   jenkins-agent:
     build:
       context: .
       dockerfile: Dockerfile.agent
-      # הוסף build arg כדי להכריח rebuild
-      args:
-        - BUILD_DATE=${BUILD_DATE:-$(date)}
     container_name: jenkins-agent
+    privileged: true              # מאפשר שימוש ב-docker socket
     user: root
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:rw
       - jenkins-data:/var/jenkins_home
     networks:
       - jewelry-net
     restart: unless-stopped
-    # Agent needs to stay running - use sleep for now
     command: ["sleep", "infinity"]
     depends_on:
       - jenkins
@@ -41,7 +38,9 @@ services:
   # Jenkins Server
   # -------------------------
   jenkins:
-    image: jenkins/jenkins:lts
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
     container_name: jenkins
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
@@ -50,7 +49,7 @@ services:
       - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     networks:
       - jewelry-net
     restart: unless-stopped
