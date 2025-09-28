@@ -20,20 +20,35 @@ services:
       start_period: 30s
 
   # -------------------------
-  # Jenkins
+  # Jenkins + Docker-in-Docker
   # -------------------------
+  jenkins-docker:
+    image: docker:dind
+    container_name: jenkins-docker
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - jenkins-docker-certs:/certs/client
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - jewelry-net
+    restart: unless-stopped
+
   jenkins:
     image: jenkins/jenkins:lts
     container_name: jenkins
-    user: root                     # נותן גישה ל-docker socket
     environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=tcp://jenkins-docker:2376
+      - DOCKER_CERT_PATH=/certs/client
+      - DOCKER_TLS_VERIFY=1
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock  # גישה לדוקר של המארח
+      - jenkins-docker-certs:/certs/client:ro
     networks:
       - jewelry-net
     restart: unless-stopped
@@ -91,6 +106,7 @@ services:
 volumes:
   nexus-data:
   jenkins-data:
+  jenkins-docker-certs:
 
 # -------------------------
 # Network
