@@ -7,10 +7,10 @@ services:
       context: .
       dockerfile: Dockerfile.agent
     container_name: jenkins-agent
-    privileged: true              # מאפשר שימוש ב-docker socket
+    privileged: true
     user: root
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /var/run/docker.sock:/var/run/docker.sock:rw   # מאפשר גישה ל-Docker daemon
       - jenkins-data:/var/jenkins_home
     networks:
       - jewelry-net
@@ -26,8 +26,8 @@ services:
     image: sonatype/nexus3
     container_name: nexus
     ports:
-      - "8081:8081"   # UI
-      - "8082:8082"   # Docker registry
+      - "8081:8081"
+      - "8082:8082"
     volumes:
       - nexus-data:/nexus-data
     networks:
@@ -54,16 +54,19 @@ services:
       - jewelry-net
     restart: unless-stopped
 
-# -------------------------
-# Volumes
-# -------------------------
-volumes:
-  jenkins-data:
-  nexus-data:
-
-# -------------------------
-# Network
-# -------------------------
 networks:
   jewelry-net:
-    driver: bridge
+
+volumes:
+  jenkins-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/roie/jenkins-data
+      o: bind
+  nexus-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/roie/nexus-data
+      o: bind

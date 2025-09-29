@@ -34,18 +34,14 @@ pipeline {
 
     stages {
 
-        stage('Debug Docker Environment') {
+        stage('Prepare Workspace') {
             steps {
-                echo ">>> Checking Docker environment..."
-                sh 'whoami'
-                sh 'id'
-                sh 'echo $PATH'
-                sh 'which docker || echo "docker not found"'
-                sh 'docker --version || echo "docker not installed"'
-                sh 'docker info || echo "cannot access docker daemon"'
+                sh '''
+                    echo ">>> Marking workspace as safe for Git..."
+                    git config --global --add safe.directory /var/jenkins_home/workspace/Jewelry-App-Pipeline
+                '''
             }
         }
-
         stage('Build & Push Docker Image') {
             steps {
                 script {
