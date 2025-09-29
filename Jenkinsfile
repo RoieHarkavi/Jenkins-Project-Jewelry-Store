@@ -54,7 +54,7 @@ pipeline {
         stage('Quality & Tests') {
             parallel(
                 'Linting': {
-                    steps {
+                    stage('Linting') {
                         sh """
                             pip3 install -r requirements.txt
                             pylint *.py --rcfile=.pylintrc || true
@@ -62,7 +62,7 @@ pipeline {
                     }
                 },
                 'Unit Tests': {
-                    steps {
+                    stage('Unit Tests') {
                         sh """
                             pip3 install -r requirements.txt
                             pytest --junitxml results.xml tests/*.py
