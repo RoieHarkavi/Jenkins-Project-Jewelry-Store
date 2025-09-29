@@ -52,12 +52,25 @@ pipeline {
         }
 
         stage('Quality & Tests') {
-            steps {
-                script {
-
-                    runTests(DOCKER_IMAGE, env.IMAGE_TAG)
+            parallel(
+                'Linting': {
+                    steps {
+                        sh """
+                            pip3 install -r requirements.txt
+                            pylint *.py --rcfile=.pylintrc || true
+                        """
+                    }
+                },
+                'Unit Tests': {
+                    steps {
+                        sh """
+                            pip3 install -r requirements.txt
+                            pytest --junitxml results.xml tests/*.py
+                        """
+                        junit allowEmptyResults: true, testResults: 'results.xml'
+                    }
                 }
-            }
+            )
         }
 
 
