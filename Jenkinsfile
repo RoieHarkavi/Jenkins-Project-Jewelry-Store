@@ -33,11 +33,9 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    // מקבלים את ה־commit hash
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
 
-                    // התחברות ל־Nexus
                     withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                         sh '''
                             echo $NEXUS_PASS | docker login --username $NEXUS_USER --password-stdin http://localhost:8082
