@@ -8,18 +8,17 @@ pipeline {
         }
     }
 
-triggers {
-    GenericTrigger(
-        genericVariables: [
-            [key: 'branch', value: '$.ref']
-        ],
-        causeString: 'Triggered on $branch',
-        token: 'my-token',
-        printContributedVariables: true,
-        printPostContent: true
-    )
-}
-
+    triggers {
+        GenericTrigger(
+            genericVariables: [
+                [key: 'branch', value: '$.ref']
+            ],
+            causeString: 'Triggered on $branch',
+            token: 'my-token',
+            printContributedVariables: true,
+            printPostContent: true
+        )
+    }
 
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
@@ -46,20 +45,11 @@ triggers {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-                    env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
-
-                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh '''
-                            echo $NEXUS_PASS | docker login --username $NEXUS_USER --password-stdin http://nexus:8082
-                        '''
-                    }
-
-                    buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
+                    // עכשיו buildAndPush מטפל גם ביצירת ה-tag עם commit hash ו-BUILD_NUMBER
+                    env.IMAGE_TAG = buildAndPush(DOCKER_IMAGE, NEXUS_CREDENTIALS)
                 }
             }
         }
-
 
         stage('Quality & Tests') {
             steps {
