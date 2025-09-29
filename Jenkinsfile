@@ -45,7 +45,6 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    // עכשיו buildAndPush מטפל גם ביצירת ה-tag עם commit hash ו-BUILD_NUMBER
                     env.IMAGE_TAG = buildAndPush(DOCKER_IMAGE, NEXUS_CREDENTIALS)
                 }
             }
