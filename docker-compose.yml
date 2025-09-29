@@ -1,21 +1,6 @@
-version: '3.9'
+version: "3.9"
 
 services:
-  # -------------------------
-  # Nexus Repository
-  # -------------------------
-  nexus:
-    image: sonatype/nexus3
-    container_name: nexus
-    ports:
-      - "8081:8081"   # UI
-      - "8082:8082"   # Docker registry
-    volumes:
-      - nexus-data:/nexus-data
-    networks:
-      - jewelry-net
-    restart: unless-stopped
-
   # -------------------------
   # Jenkins Server
   # -------------------------
@@ -56,6 +41,21 @@ services:
     depends_on:
       - jenkins
       - nexus
+
+  # -------------------------
+  # Nexus Repository
+  # -------------------------
+  nexus:
+    image: sonatype/nexus3
+    container_name: nexus
+    ports:
+      - "8081:8081"   # UI
+      - "8082:8082"   # Docker registry
+    volumes:
+      - nexus-data:/nexus-data
+    networks:
+      - jewelry-net
+    restart: unless-stopped
 
 networks:
   jewelry-net:
