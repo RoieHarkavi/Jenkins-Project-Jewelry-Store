@@ -49,9 +49,9 @@ pipeline {
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
 
-                    // Login ל־Nexus
+                    // Login ל־Nexus באמצעות HTTP
                     withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin host.docker.internal:8082'
+                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin http://host.docker.internal:8082'
                     }
 
                     // Build & push
