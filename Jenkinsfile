@@ -28,28 +28,12 @@ pipeline {
     }
 
     environment {
-        DOCKER_REGISTRY = "host.docker.internal:8082"
+        DOCKER_REGISTRY = "nexus:8082"
         DOCKER_IMAGE    = "${DOCKER_REGISTRY}/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
     }
 
     stages {
-
-        stage('Docker Daemon Config') {
-            steps {
-                sh '''
-                    echo ">>> Configuring Docker insecure registry..."
-                    mkdir -p /etc/docker
-                    cat > /etc/docker/daemon.json <<EOF
-                    {
-                      "insecure-registries": ["${DOCKER_REGISTRY}"]
-                    }
-                    EOF
-                    service docker restart || true
-                '''
-            }
-        }
-
         stage('Prepare Workspace') {
             steps {
                 sh '''
