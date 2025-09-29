@@ -8,6 +8,19 @@ pipeline {
         }
     }
 
+triggers {
+    GenericTrigger(
+        genericVariables: [
+            [key: 'branch', value: '$.ref']
+        ],
+        causeString: 'Triggered on $branch',
+        token: 'my-token',
+        printContributedVariables: true,
+        printPostContent: true
+    )
+}
+
+
     environment {
         DOCKER_IMAGE = "localhost:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
