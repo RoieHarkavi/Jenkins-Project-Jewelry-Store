@@ -54,7 +54,7 @@ pipeline {
         stage('Quality & Tests') {
             parallel(
                 'Linting': {
-                    stage('Linting') {
+                    script {
                         sh """
                             pip3 install -r requirements.txt
                             pylint *.py --rcfile=.pylintrc || true
@@ -62,7 +62,7 @@ pipeline {
                     }
                 },
                 'Unit Tests': {
-                    stage('Unit Tests') {
+                    script {
                         sh """
                             pip3 install -r requirements.txt
                             pytest --junitxml results.xml tests/*.py
@@ -72,6 +72,7 @@ pipeline {
                 }
             )
         }
+
 
 
         stage('Security Scan') {
