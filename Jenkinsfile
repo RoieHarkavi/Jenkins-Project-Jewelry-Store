@@ -52,10 +52,10 @@ pipeline {
 
         stage('Quality & Tests') {
             steps {
-                sh '''
-                    python3 -m pip install -r requirements.txt
-                    python3 -m pylint *.py --rcfile=.pylintrc || true
-                '''
+                script {
+                    // שימוש בפונקציה מהספרייה המשותפת שמבצעת pip install + pytest בתוך container
+                    runTests(DOCKER_IMAGE, env.IMAGE_TAG)
+                }
             }
         }
 
