@@ -22,7 +22,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
-        NEXUS_CREDENTIALS = 'nexus-credentials'
+        NEXUS_CREDENTIALS = credentials('nexus-credentials')
+        SNYK_TOKEN = credentials('snyk-token')
     }
 
     options {
@@ -58,7 +59,7 @@ pipeline {
                 }
             }
         }
-        
+
 
         stage('Security Scan') {
             steps {
