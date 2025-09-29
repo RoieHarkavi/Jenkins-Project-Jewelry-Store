@@ -33,17 +33,23 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
+                    // מקבלים את ה־commit hash
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
 
-                    echo ">>> Logging in to Nexus..."
-                    sh "echo \$NEXUS_PASSWORD | docker login -u \$NEXUS_USERNAME --password-stdin localhost:8082"
+                    // התחברות ל־Nexus
+                    withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                        sh '''
+                            echo $NEXUS_PASS | docker login --username $NEXUS_USER --password-stdin http://localhost:8082
+                        '''
+                    }
 
-                    echo ">>> Building & pushing Docker image..."
+                    // Build ו־Push
                     buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
                 }
             }
         }
+
 
         stage('Quality & Tests') {
             steps {
