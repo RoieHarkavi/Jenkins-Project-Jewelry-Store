@@ -22,7 +22,7 @@ triggers {
 
 
     environment {
-        DOCKER_IMAGE = "localhost:8082/docker-repo/jewelry-app"
+        DOCKER_IMAGE = "nexus:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
     }
 
@@ -51,11 +51,10 @@ triggers {
 
                     withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                         sh '''
-                            echo $NEXUS_PASS | docker login --username $NEXUS_USER --password-stdin http://localhost:8082
+                            echo $NEXUS_PASS | docker login --username $NEXUS_USER --password-stdin http://nexus:8082
                         '''
                     }
 
-                    // Build ו־Push
                     buildAndPush(DOCKER_IMAGE, env.IMAGE_TAG, NEXUS_CREDENTIALS)
                 }
             }
