@@ -53,11 +53,12 @@ pipeline {
         stage('Quality & Tests') {
             steps {
                 script {
-                    // שימוש בפונקציה מהספרייה המשותפת שמבצעת pip install + pytest בתוך container
+
                     runTests(DOCKER_IMAGE, env.IMAGE_TAG)
                 }
             }
         }
+        
 
         stage('Security Scan') {
             steps {
