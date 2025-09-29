@@ -28,11 +28,27 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "host.docker.internal:8082/docker-repo/jewelry-app"
+        DOCKER_REGISTRY = "host.docker.internal:8082"
+        DOCKER_IMAGE    = "${DOCKER_REGISTRY}/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
     }
 
     stages {
+
+        stage('Docker Daemon Config') {
+            steps {
+                sh '''
+                    echo ">>> Configuring Docker insecure registry..."
+                    mkdir -p /etc/docker
+                    cat > /etc/docker/daemon.json <<EOF
+                    {
+                      "insecure-registries": ["${DOCKER_REGISTRY}"]
+                    }
+                    EOF
+                    service docker restart || true
+                '''
+            }
+        }
 
         stage('Prepare Workspace') {
             steps {
@@ -49,9 +65,9 @@ pipeline {
                     def commitHash = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     env.IMAGE_TAG = "${commitHash}-${env.BUILD_NUMBER}"
 
-                    // Login ל־Nexus באמצעות HTTP
+                    // Login ל־Nexus
                     withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin http://host.docker.internal:8082'
+                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin $DOCKER_REGISTRY'
                     }
 
                     // Build & push
