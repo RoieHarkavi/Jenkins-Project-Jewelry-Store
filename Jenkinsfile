@@ -28,7 +28,7 @@ pipeline {
     }
 
     environment {
-        DOCKER_IMAGE = "localhost:8082/docker-repo/jewelry-app"
+        DOCKER_IMAGE = "host.docker.internal:8082/docker-repo/jewelry-app"
         NEXUS_CREDENTIALS = 'nexus-credentials'
     }
 
@@ -51,7 +51,7 @@ pipeline {
 
                     // Login ל־Nexus
                     withCredentials([usernamePassword(credentialsId: NEXUS_CREDENTIALS, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin localhost:8082'
+                        sh 'echo $NEXUS_PASS | docker login -u $NEXUS_USER --password-stdin host.docker.internal:8082'
                     }
 
                     // Build & push
