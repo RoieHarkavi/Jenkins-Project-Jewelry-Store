@@ -1,24 +1,6 @@
-services:
-  # -------------------------
-  # Jenkins Agent
-  # -------------------------
-  jenkins-agent:
-    build:
-      context: .
-      dockerfile: Dockerfile.agent
-    container_name: jenkins-agent
-    privileged: true
-    user: root
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:rw   # מאפשר גישה ל-Docker daemon
-      - jenkins-data:/var/jenkins_home
-    networks:
-      - jewelry-net
-    restart: unless-stopped
-    command: ["sleep", "infinity"]
-    depends_on:
-      - jenkins
+version: '3.9'
 
+services:
   # -------------------------
   # Nexus Repository
   # -------------------------
@@ -26,8 +8,8 @@ services:
     image: sonatype/nexus3
     container_name: nexus
     ports:
-      - "8081:8081"
-      - "8082:8082"
+      - "8081:8081"   # UI
+      - "8082:8082"   # Docker registry
     volumes:
       - nexus-data:/nexus-data
     networks:
@@ -53,6 +35,27 @@ services:
     networks:
       - jewelry-net
     restart: unless-stopped
+
+  # -------------------------
+  # Jenkins Agent
+  # -------------------------
+  jenkins-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: jenkins-agent
+    privileged: true
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - jenkins-data:/var/jenkins_home
+    networks:
+      - jewelry-net
+    restart: unless-stopped
+    command: ["sleep", "infinity"]
+    depends_on:
+      - jenkins
+      - nexus
 
 networks:
   jewelry-net:
