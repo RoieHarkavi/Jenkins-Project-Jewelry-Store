@@ -6,4 +6,4 @@ PyJWT==2.8.0
 httpx==0.25.2
 pytest
 unittest2
-pylintד
+pylint
