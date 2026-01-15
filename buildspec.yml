@@ -10,30 +10,37 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
+      
+      # הגדרת נתיבי ה-Repositories
       - BACKEND_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend
       - AUTH_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth
 
   build:
     commands:
       - echo Build started on `date`
+      
+      # 1. בניית ה-Backend
       - echo Building Backend Docker image...
       - docker build -t $BACKEND_REPO:latest ./backend
       
+      # 2. בניית ה-Auth Service
       - echo Building Auth Service Docker image...
       - docker build -t $AUTH_REPO:latest ./auth-service
       
+      # 3. בניית ה-Frontend מתוך תיקיית jewelry-store
       - echo Building Frontend from jewelry-store directory...
-      # הרצת הבילד בתוך התיקייה
       - cd jewelry-store && npm install && npm run build && cd ..
 
   post_build:
     commands:
       - echo Build completed on `date`
+      
+      # דחיפת האימג'ים ל-ECR
       - docker push $BACKEND_REPO:latest
       - docker push $AUTH_REPO:latest
       
+      # 4. העלאת הפרונטנד ל-S3
       - echo Uploading to S3...
-      # פקודה חכמה שבודקת אם התיקייה היא dist או build לפני ההעלאה
       - |
         if [ -d "./jewelry-store/dist" ]; then
           aws s3 sync ./jewelry-store/dist s3://my-static-site-roieharkavi-2026 --delete
@@ -45,9 +52,11 @@ phases:
           exit 1
         fi
       
-      - echo Invalidating CloudFront...
-      - aws cloudfront create-invalidation --distribution-id d3ak4fwjnqldtt --paths "/*"
+      # 5. ניקוי ה-Cache של CloudFront עם ה-ID הנכון
+      - echo Invalidating CloudFront cache...
+      - aws cloudfront create-invalidation --distribution-id E3INU0AM3WXSBY --paths "/*" || true
       
+      # 6. עדכון ה-Manifests עבור ArgoCD
       - echo Updating manifests...
       - printf '[{"name":"backend","imageUri":"%s"},{"name":"auth","imageUri":"%s"}]' $BACKEND_REPO:latest $AUTH_REPO:latest > imagedefinitions.json
 
