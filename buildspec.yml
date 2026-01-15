@@ -9,45 +9,37 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      # נשתמש ב-REPOSITORY_URI המקורי שלך כפי שהיה קודם
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-      # כאן נגדיר את המשתנים לשימוש בהמשך (וודא שהם קיימים ב-CodeBuild)
-      - BACKEND_REPO=$REPOSITORY_URI_BACKEND
-      - AUTH_REPO=$REPOSITORY_URI_AUTH
+      # החזרתי את הכתובת המפורשת כדי שלא ינסה להתחבר ל-Docker Hub
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
+      
+      # הגדרת נתיבי ה-Repositories (וודא שהשמות jewelry-backend ו-jewelry-auth נכונים)
+      - BACKEND_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend
+      - AUTH_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth
 
   build:
     commands:
       - echo Build started on `date`
-      
-      # 1. בניית ה-Backend
       - echo Building Backend Docker image...
       - docker build -t $BACKEND_REPO:latest ./backend
       
-      # 2. בניית ה-Auth Service
       - echo Building Auth Service Docker image...
       - docker build -t $AUTH_REPO:latest ./auth-service
       
-      # 3. בניית ה-Frontend
       - echo Building Frontend...
       - cd frontend && npm install && npm run build && cd ..
 
   post_build:
     commands:
       - echo Build completed on `date`
-      
-      # דחיפת האימג'ים
       - docker push $BACKEND_REPO:latest
       - docker push $AUTH_REPO:latest
       
-      # העלאת הפרונטנד ל-S3 (השורה שביקשת להוסיף)
       - echo Uploading to S3...
       - aws s3 sync ./frontend/dist s3://my-static-site-roieharkavi-2026 --delete
       
-      # ניקוי Cache (השורה שביקשת להוסיף)
       - echo Invalidating CloudFront...
       - aws cloudfront create-invalidation --distribution-id d3ak4fwjnqldtt --paths "/*"
       
-      # יצירת הקובץ לארגו
       - echo Updating manifests...
       - printf '[{"name":"backend","imageUri":"%s"},{"name":"auth","imageUri":"%s"}]' $BACKEND_REPO:latest $AUTH_REPO:latest > imagedefinitions.json
 
