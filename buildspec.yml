@@ -1,25 +1,51 @@
 version: 0.2
 
 phases:
+  install:
+    runtime-versions:
+      python: 3.9
+      nodejs: 18
+  
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - AWS_REGION=us-east-1
-      - AWS_ACCOUNT_ID=661659055102
-      # שיניתי כאן לשם שמופיע אצלך בצילום מסך
-      - REPO_NAME=jewelry-backend
-      - REPO_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      # נגדיר משתני עזר לכתובות ה-ECR (בהנחה שיש לך Repository נפרד לכל אחד או Tags שונים)
+      - BACKEND_REPO=$REPOSITORY_URI_BACKEND
+      - AUTH_REPO=$REPOSITORY_URI_AUTH
+
   build:
     commands:
-      - echo Building the Docker image for Backend...
-      # וודא שהתיקייה בגיטהאב אכן נקראת backend
-      - docker build -t $REPO_URL:latest ./backend
+      - echo Build started on `date`
+      
+      # 1. בניית ה-Backend
+      - echo Building Backend Docker image...
+      - docker build -t $BACKEND_REPO:latest ./backend
+      
+      # 2. בניית ה-Auth Service
+      - echo Building Auth Service Docker image...
+      - docker build -t $AUTH_REPO:latest ./auth-service
+      
+      # 3. בניית ה-Frontend (קבצים סטטיים)
+      - echo Building Frontend...
+      - cd frontend && npm install && npm run build && cd ..
+
   post_build:
     commands:
-      - echo Pushing the Docker image...
-      - docker push $REPO_URL:latest
-      - printf '{"ImageURI":"%s"}' $REPO_URL:latest > imageDetail.json
+      - echo Build completed on `date`
+      
+      # דחיפת האימג'ים ל-ECR
+      - docker push $BACKEND_REPO:latest
+      - docker push $AUTH_REPO:latest
+      
+      # העלאת הפרונטנד ל-S3
+      - echo Uploading to S3...
+      - aws s3 sync ./frontend/dist s3://my-static-site-roieharkavi-2026 --delete
+      
+      # עדכון ה-Manifests עבור ArgoCD (אופציונלי - אם אתה משתמש ב-Image Tag דינמי)
+      - echo Updating manifests...
+      - printf '[{"name":"backend","imageUri":"%s"},{"name":"auth","imageUri":"%s"}]' $BACKEND_REPO:latest $AUTH_REPO:latest > imagedefinitions.json
+
 artifacts:
   files:
-    - imageDetail.json
+    - '**/*'
