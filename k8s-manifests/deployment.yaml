@@ -1,35 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auth-service-deployment # שינוי שם כדי שלא יתנגש ב-Backend
+  name: auth-service-deployment
   namespace: roieharkavi-jenkins
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: auth-service # חייב להתאים ל-Labels למטה
+      app: auth-service
   template:
     metadata:
+      annotations:
+        # השורה הזו גורמת ל-Kubernetes לרענן את הפוד גם כשה-Tag הוא latest
+        kubectl.kubernetes.io/restartedAt: "{{STAMP}}" 
       labels:
         app: auth-service
     spec:
       containers:
       - name: auth-container
-        # וודא שיצרת רפוזיטורי בשם jewelry-auth ב-ECR או שנה לשם הנכון
         image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth:latest 
         ports:
-        - containerPort: 8001 # הפורט של ה-Auth לפי ה-Dockerfile שלך
+        - containerPort: 8001
         imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-service # זה השם שחיפשנו ב-kubectl get svc
+  name: auth-service
   namespace: roieharkavi-jenkins
 spec:
   type: LoadBalancer
   selector:
-    app: auth-service # זה מה שמחבר את ה-Service ל-Deployment שמעליו
+    app: auth-service
   ports:
     - protocol: TCP
       port: 80
