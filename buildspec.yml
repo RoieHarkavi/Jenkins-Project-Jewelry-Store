@@ -9,10 +9,9 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      # החזרתי את הכתובת המפורשת כדי שלא ינסה להתחבר ל-Docker Hub
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
       
-      # הגדרת נתיבי ה-Repositories (וודא שהשמות jewelry-backend ו-jewelry-auth נכונים)
+      # הגדרת נתיבי ה-Repositories
       - BACKEND_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend
       - AUTH_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth
 
@@ -25,8 +24,9 @@ phases:
       - echo Building Auth Service Docker image...
       - docker build -t $AUTH_REPO:latest ./auth-service
       
-      - echo Building Frontend...
-      - cd frontend && npm install && npm run build && cd ..
+      - echo Building Frontend from jewelry-store directory...
+      # שינוי כאן: כניסה לתיקייה הנכונה
+      - cd jewelry-store && npm install && npm run build && cd ..
 
   post_build:
     commands:
@@ -35,7 +35,8 @@ phases:
       - docker push $AUTH_REPO:latest
       
       - echo Uploading to S3...
-      - aws s3 sync ./frontend/dist s3://my-static-site-roieharkavi-2026 --delete
+      # שינוי כאן: הנתיב המקור הוא jewelry-store/dist
+      - aws s3 sync ./jewelry-store/dist s3://my-static-site-roieharkavi-2026 --delete
       
       - echo Invalidating CloudFront...
       - aws cloudfront create-invalidation --distribution-id d3ak4fwjnqldtt --paths "/*"
