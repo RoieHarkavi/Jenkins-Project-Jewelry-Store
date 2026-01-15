@@ -6,8 +6,8 @@ metadata:
 spec:
   type: LoadBalancer
   selector:
-    app: my-app  # וודא שזה תואם ל-label ב-Deployment שלך
+    app: my-app
   ports:
     - protocol: TCP
-      port: 80         # הפורט שדרכו CloudFront יתחבר
-      targetPort: 80   # הפורט שהאפליקציה שלך מאזינה לו בפועל
+      port: 80         # הפורט החיצוני (של ה-Load Balancer)
+      targetPort: 8000 # התיקון: הפורט האמיתי של ה-Python כפי שמופיע ב-Dockerfile
