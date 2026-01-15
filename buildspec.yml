@@ -10,7 +10,7 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-      # נגדיר משתני עזר לכתובות ה-ECR (בהנחה שיש לך Repository נפרד לכל אחד או Tags שונים)
+      # הגדרת משתני עזר (וודא שהם מוגדרים ב-CodeBuild Environment Variables)
       - BACKEND_REPO=$REPOSITORY_URI_BACKEND
       - AUTH_REPO=$REPOSITORY_URI_AUTH
 
@@ -28,6 +28,7 @@ phases:
       
       # 3. בניית ה-Frontend (קבצים סטטיים)
       - echo Building Frontend...
+      # וודא שהתיקייה נקראת בדיוק frontend בגיטהאב שלך
       - cd frontend && npm install && npm run build && cd ..
 
   post_build:
@@ -38,11 +39,19 @@ phases:
       - docker push $BACKEND_REPO:latest
       - docker push $AUTH_REPO:latest
       
-      # העלאת הפרונטנד ל-S3
+      # --- תיקון והוספה מכאן ---
+      
+      # 4. העלאת הפרונטנד ל-S3
       - echo Uploading to S3...
+      # וודא שתיקיית הפלט היא אכן dist (ב-React/Vite זה dist, ב-Angular זה dist/project-name)
       - aws s3 sync ./frontend/dist s3://my-static-site-roieharkavi-2026 --delete
       
-      # עדכון ה-Manifests עבור ArgoCD (אופציונלי - אם אתה משתמש ב-Image Tag דינמי)
+      # 5. ניקוי ה-Cache של CloudFront (הפקודה החדשה)
+      - echo Invalidating CloudFront cache so changes reflect immediately...
+      # החלף את YOUR_DISTRIBUTION_ID ב-d3ak4fwjnqldtt (או השתמש במשתנה סביבה)
+      - aws cloudfront create-invalidation --distribution-id d3ak4fwjnqldtt --paths "/*"
+      
+      # עדכון ה-Manifests עבור ArgoCD
       - echo Updating manifests...
       - printf '[{"name":"backend","imageUri":"%s"},{"name":"auth","imageUri":"%s"}]' $BACKEND_REPO:latest $AUTH_REPO:latest > imagedefinitions.json
 
