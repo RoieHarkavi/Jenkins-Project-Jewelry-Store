@@ -1,38 +1,39 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: auth-service-deployment
+  name: jewelry-backend-deployment
   namespace: roieharkavi-jenkins
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: auth-service
+      app: jewelry-backend
   template:
     metadata:
       annotations:
-        # השורה הזו גורמת ל-Kubernetes לרענן את הפוד גם כשה-Tag הוא latest
-        kubectl.kubernetes.io/restartedAt: "{{STAMP}}" 
+        # זה הפתרון לבעיית ה-Sync: גורם ל-K8s לרענן את הפודים גם כשה-Tag הוא latest
+        kubectl.kubernetes.io/restartedAt: "2026-01-15T12:00:00Z"
       labels:
-        app: auth-service
+        app: jewelry-backend
     spec:
       containers:
-      - name: auth-container
-        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth:latest 
-        ports:
-        - containerPort: 8001
-        imagePullPolicy: Always
+        - name: backend-container
+          image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: auth-service
+  name: jewelry-backend-service
   namespace: roieharkavi-jenkins
 spec:
   type: LoadBalancer
   selector:
-    app: auth-service
+    app: jewelry-backend
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8001
+      targetPort: 80
