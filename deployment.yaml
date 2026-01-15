@@ -15,9 +15,9 @@ spec:
     spec:
       containers:
       - name: my-app
-        # כאן הכתובת המעודכנת עם ה-Account ID שלך
-        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo:latest
+        # תיקון: שם הרפוזיטורי שונה מ-roieharkavi-repo ל-jewelry-backend
+        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend:latest
         ports:
         - containerPort: 80
-        # הוספת מדיניות משיכה כדי ש-ArgoCD ימשוך את ה-Image גם אם השם לא השתנה
+        # חשוב מאוד כדי ש-ArgoCD יעדכן את הפודים בכל פעם שיש אימג' חדש
         imagePullPolicy: Always
