@@ -4,22 +4,23 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
+      # התחברות ל-ECR
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
+      # הגדרת משתנה ה-URL בצורה מפורשת
       - REPO_URL=661659055102.dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      # שים לב: אנחנו נותנים את ה-Tag המלא כבר בשלב הבנייה
-      # תחליף את 'backend' בשם התיקייה האמיתי שלך (למשל 'backend' או 'frontend')
+      # בנייה עם ה-Tag המלא
       - docker build -t $REPO_URL:latest ./backend
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker image...
-      # עכשיו ה-Push יעבוד כי ה-Tag קיים מקומית מהשלב הקודם
+      # דחיפה של אותו Tag בדיוק
       - docker push $REPO_URL:latest
-      - echo Creating imageDetail.json...
+      - echo Creating imageDetail.json for ArgoCD...
       - printf '{"ImageURI":"%s"}' $REPO_URL:latest > imageDetail.json
 artifacts:
   files:
