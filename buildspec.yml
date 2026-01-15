@@ -10,8 +10,6 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
-      
-      # הגדרת נתיבי ה-Repositories
       - BACKEND_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend
       - AUTH_REPO=661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth
 
@@ -25,7 +23,7 @@ phases:
       - docker build -t $AUTH_REPO:latest ./auth-service
       
       - echo Building Frontend from jewelry-store directory...
-      # שינוי כאן: כניסה לתיקייה הנכונה
+      # הרצת הבילד בתוך התיקייה
       - cd jewelry-store && npm install && npm run build && cd ..
 
   post_build:
@@ -35,8 +33,17 @@ phases:
       - docker push $AUTH_REPO:latest
       
       - echo Uploading to S3...
-      # שינוי כאן: הנתיב המקור הוא jewelry-store/dist
-      - aws s3 sync ./jewelry-store/dist s3://my-static-site-roieharkavi-2026 --delete
+      # פקודה חכמה שבודקת אם התיקייה היא dist או build לפני ההעלאה
+      - |
+        if [ -d "./jewelry-store/dist" ]; then
+          aws s3 sync ./jewelry-store/dist s3://my-static-site-roieharkavi-2026 --delete
+        elif [ -d "./jewelry-store/build" ]; then
+          aws s3 sync ./jewelry-store/build s3://my-static-site-roieharkavi-2026 --delete
+        else
+          echo "Error: No dist or build directory found in jewelry-store!"
+          ls -R jewelry-store
+          exit 1
+        fi
       
       - echo Invalidating CloudFront...
       - aws cloudfront create-invalidation --distribution-id d3ak4fwjnqldtt --paths "/*"
