@@ -1,3 +1,4 @@
+# --- JEWELRY BACKEND ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,8 +12,8 @@ spec:
   template:
     metadata:
       annotations:
-        # זה הפתרון לבעיית ה-Sync: גורם ל-K8s לרענן את הפודים גם כשה-Tag הוא latest
-        kubectl.kubernetes.io/restartedAt: "2026-01-15T12:00:00Z"
+        # ערך קבוע למניעת קונפליקטים ב-Sync
+        deployment-version: "2026-01-15-v1"
       labels:
         app: jewelry-backend
     spec:
@@ -22,7 +23,6 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-              protocol: TCP
 ---
 apiVersion: v1
 kind: Service
@@ -37,3 +37,43 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
+
+---
+# --- AUTH SERVICE ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service-deployment
+  namespace: roieharkavi-jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      annotations:
+        deployment-version: "2026-01-15-v1"
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-container
+        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth:latest 
+        ports:
+        - containerPort: 8001
+        imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: roieharkavi-jenkins
+spec:
+  type: LoadBalancer
+  selector:
+    app: auth-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8001
