@@ -4,23 +4,21 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      # התחברות ל-ECR
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 661659055102.dkr.ecr.us-east-1.amazonaws.com
-      # הגדרת משתנה ה-URL בצורה מפורשת
-      - REPO_URL=661659055102.dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo
+      - AWS_REGION=us-east-1
+      - AWS_ACCOUNT_ID=661659055102
+      # שיניתי כאן לשם שמופיע אצלך בצילום מסך
+      - REPO_NAME=jewelry-backend
+      - REPO_URL=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
-      # בנייה עם ה-Tag המלא
+      - echo Building the Docker image for Backend...
+      # וודא שהתיקייה בגיטהאב אכן נקראת backend
       - docker build -t $REPO_URL:latest ./backend
   post_build:
     commands:
-      - echo Build completed on `date`
       - echo Pushing the Docker image...
-      # דחיפה של אותו Tag בדיוק
       - docker push $REPO_URL:latest
-      - echo Creating imageDetail.json for ArgoCD...
       - printf '{"ImageURI":"%s"}' $REPO_URL:latest > imageDetail.json
 artifacts:
   files:
