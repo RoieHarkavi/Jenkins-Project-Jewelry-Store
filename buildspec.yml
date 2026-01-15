@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - # התחברות אוטומטית ל-ECR לפי ה-Account ID שלך
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com
+      - REPO_URL=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $REPO_URL:latest .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPO_URL:latest
+      - echo Creating imageDetail.json for next stages...
+      - printf '{"ImageURI":"%s"}' $REPO_URL:latest > imageDetail.json
+artifacts:
+  files:
+    - imageDetail.json
