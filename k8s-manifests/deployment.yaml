@@ -1,23 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-app-deployment
+  name: auth-service-deployment # שינוי שם כדי שלא יתנגש ב-Backend
   namespace: roieharkavi-jenkins
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: my-app
+      app: auth-service # חייב להתאים ל-Labels למטה
   template:
     metadata:
       labels:
-        app: my-app
+        app: auth-service
     spec:
       containers:
-      - name: my-app
-        # תיקון: שם הרפוזיטורי שונה מ-roieharkavi-repo ל-jewelry-backend
-        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-backend:latest
+      - name: auth-container
+        # וודא שיצרת רפוזיטורי בשם jewelry-auth ב-ECR או שנה לשם הנכון
+        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/jewelry-auth:latest 
         ports:
-        - containerPort: 80
-        # חשוב מאוד כדי ש-ArgoCD יעדכן את הפודים בכל פעם שיש אימג' חדש
+        - containerPort: 8001 # הפורט של ה-Auth לפי ה-Dockerfile שלך
         imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service # זה השם שחיפשנו ב-kubectl get svc
+  namespace: roieharkavi-jenkins
+spec:
+  type: LoadBalancer
+  selector:
+    app: auth-service # זה מה שמחבר את ה-Service ל-Deployment שמעליו
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8001
