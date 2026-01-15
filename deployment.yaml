@@ -15,7 +15,9 @@ spec:
     spec:
       containers:
       - name: my-app
-        # כאן ArgoCD יעדכן את הגרסה אוטומטית
-        image: <YOUR_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo:latest
+        # כאן הכתובת המעודכנת עם ה-Account ID שלך
+        image: 661659055102.dkr.ecr.us-east-1.amazonaws.com/roieharkavi-repo:latest
         ports:
-        - containerPort: 8080
+        - containerPort: 80
+        # הוספת מדיניות משיכה כדי ש-ArgoCD ימשוך את ה-Image גם אם השם לא השתנה
+        imagePullPolicy: Always
